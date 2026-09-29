@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Giriş — Demo Boya App</title>
+  <meta name="description" content="Demo Boya App — Boya Reçete Yönetim Sistemi giriş ekranı">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    textarea.form-control { resize: vertical; }
+  </style>
+</head>
+<body>
+  <div class="login-page">
+    <!-- MARKA TARAF -->
+    <div class="login-brand">
+      <div class="login-brand-logo">DB</div>
+      <h1>Demo Boya App</h1>
+      <p>Boya reçete hesaplama ve yönetim sistemi. Maliyetleri anlık hesaplayın, reçetelerinizi kaydedin.</p>
+      <div class="login-brand-dots">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+
+    <!-- FORM TARAF -->
+    <div class="login-form-side">
+      <div class="login-form-box">
+        <h2>Hoş Geldiniz</h2>
+        <p class="login-subtitle">Devam etmek için giriş yapın</p>
+
+        <div class="login-error" id="login-error"></div>
+
+        <div class="form-group">
+          <label>Kullanıcı Adı</label>
+          <input
+            type="text"
+            id="username"
+            class="form-control"
+            placeholder="admin"
+            autocomplete="username"
+            autofocus
+          >
+        </div>
+
+        <div class="form-group">
+          <label>Şifre</label>
+          <input
+            type="password"
+            id="password"
+            class="form-control"
+            placeholder="••••••••"
+            autocomplete="current-password"
+          >
+        </div>
+
+        <div class="form-group" style="display:flex;align-items:center;gap:.5rem;margin-bottom:1.5rem">
+          <input type="checkbox" id="remember-me" style="width:16px;height:16px;cursor:pointer">
+          <label for="remember-me" style="margin:0;cursor:pointer;text-transform:none;letter-spacing:normal;font-weight:500;color:var(--text)">Beni Hatırla</label>
+        </div>
+
+        <button class="btn btn-primary btn-full btn-lg" id="btn-login" style="margin-top:.5rem">
+          Giriş Yap
+        </button>
+
+        <p class="text-xs text-muted" style="margin-top:1.5rem;text-align:center;line-height:1.8">
+          <strong>Demo kullanıcılar:</strong><br>
+          admin / admin123 &nbsp;·&nbsp; usta_a / usta123 &nbsp;·&nbsp; yetkili_a / yetkili123
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    // Zaten giriş yaptıysa direkt ana sayfaya
+    if (auth.isLoggedIn()) location.replace('index.html');
+
+    const btnLogin = document.getElementById('btn-login');
+    const errBox   = document.getElementById('login-error');
+    const rememberChk = document.getElementById('remember-me');
+    const userInp  = document.getElementById('username');
+    const passInp  = document.getElementById('password');
+
+    // Kayıtlı kullanıcı adını yükle
+    const savedUser = localStorage.getItem('saved_username');
+    if (savedUser) {
+      userInp.value = savedUser;
+      rememberChk.checked = true;
+      passInp.focus();
+    }
+
+    async function doLogin() {
+      const username = userInp.value.trim();
+      const password = passInp.value;
+      errBox.classList.remove('show');
+
+      if (!username || !password) {
+        errBox.textContent = 'Kullanıcı adı ve şifre gereklidir.';
+        errBox.classList.add('show');
+        return;
+      }
+
+      btnLogin.disabled = true;
+      btnLogin.innerHTML = '<span class="spinner" style="width:18px;height:18px;border-width:2px;border-color:rgba(255,255,255,.4);border-top-color:#fff"></span>';
+
+      try {
+        const res = await api.login(username, password);
+        // Login endpoint zaten tüm kullanıcı bilgisini döndürüyor
+        const user = {
+          username: username,
+          full_name: res.full_name || username,
+          role: res.role,
+          branch_name: res.branch_name,
+        };
+        if (rememberChk.checked) {
+          localStorage.setItem('saved_username', username);
+        } else {
+          localStorage.removeItem('saved_username');
+        }
+
+        auth.save(res.access_token, user);
+        window.location.href = 'index.html';
+      } catch(e) {
+        errBox.textContent = e.message === 'Incorrect username or password'
+          ? 'Kullanıcı adı veya şifre hatalı.'
+          : (e.message || 'Giriş yapılamadı.');
+        errBox.classList.add('show');
+        btnLogin.disabled = false;
+        btnLogin.textContent = 'Giriş Yap';
+      }
+    }
+
+    btnLogin.addEventListener('click', doLogin);
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  </script>
+</body>
+</html>
